@@ -62,12 +62,20 @@ def mailtest_send(config):
         port = cfg['port'] if cfg['port'] else smtplib.SMTP_PORT
     elif cfg['protocol'] == 'smtps':
         smtp = smtplib.SMTP_SSL
-        port = cfg['port'] if cfg['port'] else smtplib.SMTP_SSL_PORT
+        if cfg['starttls']:
+            port = cfg['port'] if cfg['port'] else 587
+        else:
+            port = cfg['port'] if cfg['port'] else smtplib.SMTP_SSL_PORT
     else:
         raise NotImplementedError()
 
     con = smtp(cfg['host'], port)
     con.set_debuglevel(1)
+    if cfg['starttls']:
+        con.ehlo()
+        con.starttls()
+        con.ehlo()
+    con.login(cfg['username'], cfg['password'])
     con.sendmail(
         from_addr=config['message']['from_addr'],
         to_addrs=config['message']['to_addr'],
@@ -90,8 +98,7 @@ def mailtest_receive(config, msg_send):
 
     con = imap(cfg['host'], port)
     con.debug = 4
-    con.login(cfg['username'],
-              cfg['password'])
+    con.login(cfg['username'], cfg['password'])
     con.select()
     typ, data = con.search(None, 'ALL')
     found = False
@@ -129,6 +136,7 @@ def get_default_config():
             'host': 'localhost',
             'port': None,
             'protocol': 'smtp',
+            'starttls': True,
             'username': '[username]',
             'password': '[password]'
         },
