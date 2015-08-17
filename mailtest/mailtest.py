@@ -74,8 +74,14 @@ def mailtest_send(config):
 
 
 def mailtest_receive(config, msg_send):
-    con = imaplib.IMAP4(config['receiving']['host'],
-                        config['receiving']['port'])
+    if config['receiving']['protocol'] == 'imap':
+        imap = imaplib.IMAP4
+    elif config['receiving']['protocol'] == 'imaps':
+        imap = imaplib.IMAP4_SSL
+    else:
+        raise NotImplementedError()
+
+    con = imap(config['receiving']['host'], config['receiving']['port'])
     con.debug = 4
     con.login(config['receiving']['username'],
               config['receiving']['password'])
@@ -122,6 +128,7 @@ def create_config(configfile):
         'receiving': {
             'host': 'localhost',
             'port': 143,
+            'protocol': 'imap',
             'username': '[username]',
             'password': '[password]'
         },
