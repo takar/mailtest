@@ -10,6 +10,7 @@ from os.path import expanduser
 import argparse
 import json
 import logging
+import collections
 
 # Sending
 import smtplib
@@ -55,14 +56,17 @@ def mailtest_send(config):
     msg['Message-ID'] = make_msgid()
     msg.attach(MIMEText(config['message']['body'], 'plain'))
 
-    if config['sending']['protocol'] == 'smtp':
+    cfg = config['sending']
+    if cfg['protocol'] == 'smtp':
         smtp = smtplib.SMTP
-    elif config['sending']['protocol'] == 'smtps':
+        port = cfg['port'] if cfg['port'] else smtplib.SMTP_PORT
+    elif cfg['protocol'] == 'smtps':
         smtp = smtplib.SMTP_SSL
+        port = cfg['port'] if cfg['port'] else smtplib.SMTP_SSL_PORT
     else:
         raise NotImplementedError()
 
-    con = smtp(config['sending']['host'], config['sending']['port'])
+    con = smtp(cfg['host'], port)
     con.set_debuglevel(1)
     con.sendmail(
         from_addr=config['message']['from_addr'],
@@ -74,17 +78,20 @@ def mailtest_send(config):
 
 
 def mailtest_receive(config, msg_send):
-    if config['receiving']['protocol'] == 'imap':
+    cfg = config['receiving']
+    if cfg['protocol'] == 'imap':
         imap = imaplib.IMAP4
-    elif config['receiving']['protocol'] == 'imaps':
+        port = cfg['port'] if cfg['port'] else imaplib.IMAP4_PORT
+    elif cfg['protocol'] == 'imaps':
         imap = imaplib.IMAP4_SSL
+        port = cfg['port'] if cfg['port'] else imaplib.IMAP4_SSL_PORT
     else:
         raise NotImplementedError()
 
-    con = imap(config['receiving']['host'], config['receiving']['port'])
+    con = imap(cfg['host'], port)
     con.debug = 4
-    con.login(config['receiving']['username'],
-              config['receiving']['password'])
+    con.login(cfg['username'],
+              cfg['password'])
     con.select()
     typ, data = con.search(None, 'ALL')
     found = False
@@ -116,18 +123,18 @@ def mailtest(config):
     return retry_with_timeout(fn, 6, 10)
 
 
-def create_config(configfile):
-    config = {
+def get_default_config():
+    return {
         'sending': {
             'host': 'localhost',
-            'port': 25,
+            'port': None,
             'protocol': 'smtp',
             'username': '[username]',
-            'password': '[password]',
+            'password': '[password]'
         },
         'receiving': {
             'host': 'localhost',
-            'port': 143,
+            'port': None,
             'protocol': 'imap',
             'username': '[username]',
             'password': '[password]'
@@ -141,20 +148,30 @@ def create_config(configfile):
             'body': 'This test message is sent by mailtest.'
         }
     }
-    contents = json.dumps(config, indent=4, separators=(',', ': '))
 
-    with open(configfile, 'w') as fd:
-        fd.write(contents)
+
+def merge_recursive(d, u):
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = merge_recursive(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+    return d
 
 
 def read_config(configfile):
-    if not os.path.exists(configfile):
-        create_config(configfile)
+    default = get_default_config()
 
-    with open(configfile) as fd:
-        contents = fd.read()
+    if os.path.exists(configfile):
+        with open(configfile) as fd:
+            contents = fd.read()
+    else:
+        contents = json.dumps(default, indent=4, separators=(',', ': '))
+        with open(configfile, 'w') as fd:
+            fd.write(contents)
 
-    return json.loads(contents)
+    return merge_recursive(default, json.loads(contents))
 
 
 def parse_args():
