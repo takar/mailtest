@@ -55,8 +55,14 @@ def mailtest_send(config):
     msg['Message-ID'] = make_msgid()
     msg.attach(MIMEText(config['message']['body'], 'plain'))
 
-    con = smtplib.SMTP(config['sending']['host'],
-                       config['sending']['port'])
+    if config['sending']['protocol'] == 'smtp':
+        smtp = smtplib.SMTP
+    elif config['sending']['protocol'] == 'smtps':
+        smtp = smtplib.SMTP_SSL
+    else:
+        raise NotImplementedError()
+
+    con = smtp(config['sending']['host'], config['sending']['port'])
     con.set_debuglevel(1)
     con.sendmail(
         from_addr=config['message']['from_addr'],
@@ -109,6 +115,7 @@ def create_config(configfile):
         'sending': {
             'host': 'localhost',
             'port': 25,
+            'protocol': 'smtp',
             'username': '[username]',
             'password': '[password]',
         },
