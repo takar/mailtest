@@ -29,12 +29,12 @@ import functools
 
 def mail_compare(msg1, msg2):
     if msg1['Subject'] != msg2['Subject']:
-        logging.debug('The subjects are different\n> {}\n> {}'.format(
+        logging.debug('The subjects are different\n> {0}\n> {1}'.format(
             msg1['Subject'], msg2['Subject']))
         return False
 
     if msg1['Date'] != msg2['Date']:
-        logging.debug('The dates are different\n> {}\n> {}'.format(
+        logging.debug('The dates are different\n> {0}\n> {1}'.format(
             msg1['Date'], msg2['Date']))
         return False
 
