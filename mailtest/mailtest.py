@@ -62,16 +62,16 @@ def mailtest_send(config):
         port = cfg['port'] if cfg['port'] else smtplib.SMTP_PORT
     elif cfg['protocol'] == 'smtps':
         smtp = smtplib.SMTP_SSL
-        if cfg['starttls']:
-            port = cfg['port'] if cfg['port'] else 587
-        else:
-            port = cfg['port'] if cfg['port'] else smtplib.SMTP_SSL_PORT
+        port = cfg['port'] if cfg['port'] else smtplib.SMTP_SSL_PORT
+    elif cfg['protocol'] == 'starttls':
+        smtp = smtplib.SMTP
+        port = cfg['port'] if cfg['port'] else 587
     else:
         raise NotImplementedError()
 
     con = smtp(cfg['host'], port)
     con.set_debuglevel(1)
-    if cfg['starttls']:
+    if cfg['protocol'] == 'starttls':
         con.ehlo()
         con.starttls()
         con.ehlo()
@@ -136,7 +136,6 @@ def get_default_config():
             'host': 'localhost',
             'port': None,
             'protocol': 'smtp',
-            'starttls': True,
             'username': '[username]',
             'password': '[password]'
         },
